@@ -1,6 +1,10 @@
 It is possible to use the very powerful (and beautiful!) Trace Compass GUI to
 visualize the trace data you obtained from trace-cmd.
 
+[Disclaimer:
+It doesn't always work all that well :/
+]
+
 How?
 
 - Firstly, install the Trace Compass GUI
