@@ -53,18 +53,19 @@ if [ $# -ge 1 ] ; then
  fi
 fi
 
-# TODO - update to check for tracefs fs
 echo "[+] Checking for ftrace support ..."
-sudo mount |grep -q -w debugfs || {
- echo "${name}: debugfs filesystem not mounted? Aborting..."
- exit 2
+# tracefs from 4.1
+sudo mount |grep -q -w tracefs || {
+  echo "${name}: tracefs filesystem not mounted? Aborting..."
+  exit 2
 }
-TRCMNT=$(sudo mount |grep -w debugfs |awk '{print $3}')
-export TRCMNT=${TRCMNT}/tracing
+export TRCMNT=$(sudo mount |grep -w tracefs |head -n1|awk '{print $3}')
+# if /sys/kernel/debug then append 'tracing' else don't (for /sys/kernel/tracing)
+echo "${TRCMNT}" |grep -q debug && TRCMNT=${TRCMNT}/tracing
 sudo ls "${TRCMNT}" >/dev/null 2>&1
 if [ $? -ne 0 ] ; then
- echo "${name}: ${TRCMNT} not pseudo-file not available? Aborting..."
- exit 2
+ echo "${name}: ${TRCMNT} no pseudo-files available? Aborting..."
+ exit 3
 fi
 echo " [OK] (ftrace loc: ${TRCMNT})"
 
