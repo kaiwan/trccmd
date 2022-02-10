@@ -127,6 +127,9 @@ else
  echo "[.] config: skip lengthy ftrace function_graph check"
 fi
 
+echo "Reset..."
+sudo trace-cmd reset
+
 #------------------ RECORD
 TRC_FILE_BINARY=trc_all.dat
 if [ $# -ge 1 ] ; then
@@ -165,7 +168,7 @@ else
 fi
 
 echo "> ${cmd}"
-[ ${USE_MARKERS} -eq 1 ] && {
+[ "${USE_MARKERS}" -eq 1 ] && {
  sudo sh -c "echo markers > ${TRCMNT}/trace_options"
  sudo sh -c "echo START > ${TRCMNT}/trace_marker"
 }
@@ -174,7 +177,7 @@ if [ $? -ne 0 ]; then
   echo "${name}: command \"${cmd}\" failed, aborting ..."
   exit 6
 fi
-[ ${USE_MARKERS} -eq 1 ] && sudo sh -c "echo END > ${TRCMNT}/trace_marker"
+[ "${USE_MARKERS}" -eq 1 ] && sudo sh -c "echo END > ${TRCMNT}/trace_marker"
 
 ls "${TRC_FILE_BINARY}" >/dev/null || {
   echo "${name}: 'trace-cmd record' failed, no binary trace file, aborting ..."
