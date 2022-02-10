@@ -1,0 +1,2 @@
+#!/bin/bash
+./trccmd -F 'ping -c1 yahoo.com' -e 'net sock cfg80211 iwlwifi mac80211 skb tcp udp'
