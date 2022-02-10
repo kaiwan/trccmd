@@ -30,29 +30,59 @@ source ${CONFIG} || {
 (Please ensure you 'git clone' the full repo to get the config file as well!)"
  exit 1
 }
-echo "config: ${CONFIG}"
+echo "config parsed from: ${CONFIG}"
 
 usage()
 {
-   echo "Usage: ${name} [program-to-ftrace-via-trace-cmd]
- Eg. sudo ./${name} ps -LA
- NOTE: this will perform an _exclusive_ ftrace of the provided app (ps in the above eg).
-If no program is provided as an argument, we shall trace-cmd(1) whatever's running.
+   echo "Usage: ${name} [-e 'subsystem1 subsystem2 ...'] [-F 'program-to-trace [arg1] [arg2] ...']
+
+ Eg. ./${name} -e 'syscalls kmem' -F 'ps -LA'
+
+ NOTE:
+ a) -F: this will perform an _exclusive_ ftrace of the provided app ('ps -LA' in the above eg).
+ b) -e: the -e 'events' switch allows you to trace particular subsystems! Pick from among
+   the ones shown below; you can specify as many as you like, just separate them with a space:
+
+$(sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ')
+
+ c) ensure you surround the -e and/or -F arguments with single quotes '...'
+ d) If no program is provided as an argument, we shall trace-cmd(1) whatever's running.
 
 Additionally, if you want to *see all function parameters and their runtime values*
 (useful!), ensure the variable SHOW_PARAMETERS is set to 1 in the config file
-${CONFIG} (check it out, useful stuff)."
+${CONFIG} (check it out, useful stuff). You will, however, lose the function graph
+when parameters are enabled."
 }
 
 
 ## "main" here
 
-if [ $# -ge 1 ] ; then
- if [ "$1" = "-h" ] || [ "$1" = "--help" ] ; then
-   usage
-   exit 0
- fi
-fi
+hash trace-cmd >/dev/null 2>&1 || {
+   echo "${name}: trace-cmd not installed (or not in PATH)?"
+   exit 1
+}
+
+while getopts ":he:F:" arg; do
+  case $arg in
+    F) # Specify prg to run
+	  PRG="${OPTARG}"
+      ;;
+    e) # Specify event subsystems (or globs)
+	  for ev in ${OPTARG}
+	  do
+		EVENTS="${EVENTS} -e ${ev}"
+	  done
+      #echo "ev = ${EVENTS}"
+      ;;
+    h | *) # Display help.
+      usage
+      exit 0
+      ;;
+  esac
+done
+[ -z "${EVENTS}" ] && EVENTS="-e all"
+
+#exit 0
 
 echo "[+] Checking for ftrace support ..."
 # tracefs from 4.1
@@ -60,27 +90,28 @@ sudo mount |grep -q -w tracefs || {
   echo "${name}: tracefs filesystem not mounted? Aborting..."
   exit 2
 }
-export TRCMNT=$(sudo mount |grep -w tracefs |head -n1|awk '{print $3}')
+TRCMNT=$(sudo mount |grep -w tracefs |head -n1|awk '{print $3}')
+export TRCMNT
 # if /sys/kernel/debug then append 'tracing' else don't (for /sys/kernel/tracing)
 echo "${TRCMNT}" |grep -q debug && TRCMNT=${TRCMNT}/tracing
-sudo ls "${TRCMNT}" >/dev/null 2>&1
-if [ $? -ne 0 ] ; then
+NF=$(sudo ls "${TRCMNT}" 2>/dev/null |wc -w)
+if [ "${NF}" -le 0 ] ; then
  echo "${name}: ${TRCMNT} no pseudo-files available? Aborting..."
  exit 3
 fi
 echo " [OK] (ftrace loc: ${TRCMNT})"
 
 #-------------- test for the 'function_graph' plugin support
-if [ ${SKIP_FTRACE_CHECK} -eq 0 ]; then
+if [ "${SKIP_FTRACE_CHECK}" -eq 0 ]; then
  echo -n "[+] Checking for trace-cmd with function_graph plugin support, pl wait ..."
- which trace-cmd >/dev/null 2>&1 || {
+ hash trace-cmd >/dev/null 2>&1 || {
    echo "${name}: trace-cmd not installed (or not in PATH)?"
    exit 1
  }
 
  mv trace.dat trace.dat.bkp 2>/dev/null
  TESTFUNC=__do_sys_getpid
- if ! sudo grep -q -w ${TESTFUNC} ${TRCMNT}/available_filter_functions ; then
+ if ! sudo grep -q -w ${TESTFUNC} "${TRCMNT}"/available_filter_functions ; then
    echo "${name}: test func ${TESTFUNC} not available, aborting test..."
    exit 4
  else
@@ -99,19 +130,18 @@ fi
 #------------------ RECORD
 TRC_FILE_BINARY=trc_all.dat
 if [ $# -ge 1 ] ; then
-  TRC_FILE_BINARY=$(basename "$1")_trc.dat
+  TRC_FILE_BINARY=$(basename "${name}")_trc.dat
 else
   echo "Will now attempt a system-wide trace..."
 fi
 #echo "TRC_FILE_BINARY = ${TRC_FILE_BINARY}"
 
-OPTS_RECORD="-o "${TRC_FILE_BINARY}""
-[ ${QUIET_MODE} -eq 1 ] && OPTS_RECORD="${OPTS_RECORD} -q"
-if [ ${SHOW_PARAMETERS} -eq 1 ] ; then
+OPTS_RECORD="-o ${TRC_FILE_BINARY}"
+[ "${QUIET_MODE}" -eq 1 ] && OPTS_RECORD="${OPTS_RECORD} -q"
+if [ "${SHOW_PARAMETERS}" -eq 1 ] ; then
   echo "
   Recording: showing parameters and their runtime values; will lose function-graph...
   "
-  OPTS_RECORD="${OPTS_RECORD} -e all"
 else
   OPTS_RECORD="${OPTS_RECORD} -p function_graph"
 fi
@@ -123,8 +153,11 @@ echo "[+] Recording now ...(binary ftrace file is ${TRC_FILE_BINARY}
  (Pl at least wait for a message onscreen before doing anything)
 Also, if you must abort, hit Ctrl^C just once >>
 "
+
+OPTS_RECORD="${OPTS_RECORD} ${EVENTS}"
+
 if [ $# -ge 1 ] ; then
-  cmd="sudo trace-cmd record ${OPTS_RECORD} -c -F "$@""
+  cmd="sudo trace-cmd record ${OPTS_RECORD} -c -F ${PRG}"  #"$@""
    # -F: trace only this executable
    # -c: ...along with it's children, if any
 else
@@ -132,17 +165,22 @@ else
 fi
 
 echo "> ${cmd}"
-eval ${cmd}
-[ $? -ne 0 ] && {
-  echo "${name}: 'trace-cmd record' failed, aborting ..."
-  exit 6
+[ ${USE_MARKERS} -eq 1 ] && {
+ sudo sh -c "echo markers > ${TRCMNT}/trace_options"
+ sudo sh -c "echo START > ${TRCMNT}/trace_marker"
 }
+eval "${cmd}"
+if [ $? -ne 0 ]; then
+  echo "${name}: command \"${cmd}\" failed, aborting ..."
+  exit 6
+fi
+[ ${USE_MARKERS} -eq 1 ] && sudo sh -c "echo END > ${TRCMNT}/trace_marker"
 
 ls "${TRC_FILE_BINARY}" >/dev/null || {
   echo "${name}: 'trace-cmd record' failed, no binary trace file, aborting ..."
   exit 7
 }
-sudo chown ${USER}:${USER} ${TRC_FILE_BINARY}
+sudo chown "${USER}":"${USER}" "${TRC_FILE_BINARY}"
 
 #------------------ REPORT
 echo "[+] Generating the trace-cmd report now ..."
@@ -150,24 +188,24 @@ echo -n "    Note: report done in latency format"
 OPTS_REPORT="-l -i ${TRC_FILE_BINARY}"
  # -l : adds a "latency output" format
  # -i : input file spec
-[ ${QUIET_MODE} -eq 1 ] && OPTS_REPORT="${OPTS_REPORT} -q"
-[ ${DONT_REPORT_IRQCTX} -eq 1 ] && {
+[ "${QUIET_MODE}" -eq 1 ] && OPTS_REPORT="${OPTS_REPORT} -q"
+[ "${DONT_REPORT_IRQCTX}" -eq 1 ] && {
   echo ", *leaving out* interrupt contexts"
   OPTS_REPORT="${OPTS_REPORT} -I -S"
 }
 
-cmd="sudo trace-cmd report ${OPTS_REPORT} > "${TRC_FILE}""
+cmd="sudo trace-cmd report ${OPTS_REPORT} > ${TRC_FILE}"
 echo "
 > ${cmd}"
-eval ${cmd}
-[ $? -ne 0 ] && {
-    echo "${name}: 'trace-cmd report' failed, aborting ..."
+eval "${cmd}"
+if [ $? -ne 0 ]; then
+    echo "${name}: command \"${cmd}\" failed, aborting ..."
     exit 6
-}
+fi
 echo "[+] Done"  #, report: ${TRC_FILE}"
 
 echo "
-trace-cmd report file: "${TRC_FILE}"
+trace-cmd report file: ${TRC_FILE}
 $(ls -lh "${TRC_FILE}")
 
 Additionally:
