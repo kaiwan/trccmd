@@ -151,12 +151,12 @@ OPTS_REPORT="-l -i ${TRC_FILE_BINARY}"
  # -l : adds a "latency output" format
  # -i : input file spec
 [ ${QUIET_MODE} -eq 1 ] && OPTS_REPORT="${OPTS_REPORT} -q"
-[ ${REPORT_IRQCTX} -eq 0 ] && {
+[ ${DONT_REPORT_IRQCTX} -eq 1 ] && {
   echo ", *leaving out* interrupt contexts"
   OPTS_REPORT="${OPTS_REPORT} -I -S"
 }
 
-cmd="trace-cmd report ${OPTS_REPORT} > "${TRC_FILE}""
+cmd="sudo trace-cmd report ${OPTS_REPORT} > "${TRC_FILE}""
 echo "
 > ${cmd}"
 eval ${cmd}
