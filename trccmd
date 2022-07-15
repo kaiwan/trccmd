@@ -15,14 +15,24 @@
 # License: MIT
 name=$(basename "$0")
 
+hash trace-cmd >/dev/null 2>&1 || {
+   echo "${name}: trace-cmd not installed (or not in PATH)?
+First install the trace-cmd package and retry..."
+   exit 1
+}
+
 [ "$(id -u)" -eq 0 ] && {
  echo "${name}: Please don't run as root."
  exit 1
 }
 CONFIG=~/.local/trccmd.config
 if [ ! -f ${CONFIG} ] ; then
-   echo "${name}: (this is (likely) your very first run, installing trccmd config file ...
+   echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
 (to ${CONFIG})"
+   if [ ! -f ./trccmd.config ] ; then
+     echo "${name}: pl ensure that the first run is from within the trccmd GitHub repo directory only..."
+	 exit 1
+   fi
    cp ./trccmd.config ~/.local/
 fi
 source ${CONFIG} || {
@@ -57,10 +67,6 @@ when parameters are enabled."
 
 ## "main" here
 
-hash trace-cmd >/dev/null 2>&1 || {
-   echo "${name}: trace-cmd not installed (or not in PATH)?"
-   exit 1
-}
 
 TMPF=/tmp/trccmd.evs.$$
 sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TMPF}
@@ -91,8 +97,6 @@ while getopts ":he:F:" arg; do
   esac
 done
 [ -z "${EVENTS}" ] && EVENTS="-e all"
-
-#exit 0
 
 echo "[+] Checking for ftrace support ..."
 # tracefs from 4.1
