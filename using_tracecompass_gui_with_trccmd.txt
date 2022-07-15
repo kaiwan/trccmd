@@ -46,3 +46,11 @@ http://archive.eclipse.org/tracecompass.incubator/doc/org.eclipse.tracecompass.i
 
 Ref:
 https://stackoverflow.com/questions/54168744/convert-an-ftrace-trace-dat-file-to-ctf-format-to-use-with-tracecompass
+
+Also- 
+Src: https://events.static.linuxfound.org/sites/events/files/slides/praesentation_0.pdf
+...
+On the host: Convert perf.data to the proper (CTF) format:
+LD_LIBRARY_PATH=/usr/local/lib ./perf data convert --to-ctf ./ctf-data
+# Now the trace data should be available in ctf-data/
+# You can import this directory with Eclipse / Tracecompass
