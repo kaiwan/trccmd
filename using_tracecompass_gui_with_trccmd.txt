@@ -25,7 +25,7 @@ Trace Compass.
 So, now, run our convenient front-end trccmd (or simply run trace-cmd
 'manually'), and then, once your tracing run is done, verify that the
 trace.dat file is present (NOTE that our trccmd front-end names it as
-<cmd>_trc.dat).
+trccmd_trc.dat).
 
 Next, go to Trace Compass : File / Open Trace...
 and select the <cmd>_trc.dat (or trace.dat) binary file.
