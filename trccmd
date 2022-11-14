@@ -72,8 +72,8 @@ when parameters are enabled."
 ## "main" here
 
 
-TMPF=/tmp/trccmd.evs.$$
-sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TMPF}
+TRCCMD_EVENTS=/tmp/trccmd.evs.$$
+sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TRCCMD_EVENTS}
 
 while getopts ":he:F:" arg; do
   case $arg in
@@ -83,9 +83,9 @@ while getopts ":he:F:" arg; do
     e) # Specify event subsystems (or globs)
 	  for ev in ${OPTARG}
 	  do
-	    grep -q "${ev}" ${TMPF} || {
+	    grep -q "${ev}" ${TRCCMD_EVENTS} || {
 		   echo "${name}: fatal: event \"${ev}\" unavailable"
-		   rm -f ${TMPF}
+		   rm -f ${TRCCMD_EVENTS}
 		   exit 1
 		}
 		EVENTS="${EVENTS} -e ${ev}"
@@ -95,7 +95,7 @@ while getopts ":he:F:" arg; do
       ;;
     h | *) # Display help.
       usage
-      rm -f ${TMPF}
+      rm -f ${TRCCMD_EVENTS}
       exit 0
       ;;
   esac
@@ -106,7 +106,7 @@ echo "[+] Checking for ftrace support ..."
 # tracefs from 4.1
 sudo mount |grep -q -w tracefs || {
   echo "${name}: tracefs filesystem not mounted? Aborting..."
-  rm -f ${TMPF}
+  rm -f ${TRCCMD_EVENTS}
   exit 2
 }
 TRCMNT=$(sudo mount |grep -w tracefs |head -n1|awk '{print $3}')
@@ -116,7 +116,7 @@ echo "${TRCMNT}" |grep -q debug && TRCMNT=${TRCMNT}/tracing
 NF=$(sudo ls "${TRCMNT}" 2>/dev/null |wc -w)
 if [ "${NF}" -le 0 ] ; then
  echo "${name}: ${TRCMNT} no pseudo-files available? Aborting..."
- rm -f ${TMPF}
+ rm -f ${TRCCMD_EVENTS}
  exit 3
 fi
 echo " [OK] (ftrace loc: ${TRCMNT})"
@@ -126,7 +126,7 @@ if [ "${SKIP_FTRACE_CHECK}" -eq 0 ]; then
  echo -n "[+] Checking for trace-cmd with function_graph plugin support, pl wait ..."
  hash trace-cmd >/dev/null 2>&1 || {
    echo "${name}: trace-cmd not installed (or not in PATH)?"
-   rm -f ${TMPF}
+   rm -f ${TRCCMD_EVENTS}
    exit 1
  }
 
@@ -134,12 +134,12 @@ if [ "${SKIP_FTRACE_CHECK}" -eq 0 ]; then
  TESTFUNC=__do_sys_getpid
  if ! sudo grep -q -w ${TESTFUNC} "${TRCMNT}"/available_filter_functions ; then
    echo "${name}: test func ${TESTFUNC} not available, aborting test..."
-   rm -f ${TMPF}
+   rm -f ${TRCCMD_EVENTS}
    exit 4
  else
   sudo trace-cmd record -p function_graph -l ${TESTFUNC} -F true >/dev/null 2>&1 || {
     echo "${name}: trace-cmd didn't work with the function-graph plugin, aborting..."
-    rm -f ${TMPF}
+    rm -f ${TRCCMD_EVENTS}
     exit 5
   }
  fi
@@ -198,14 +198,14 @@ echo "> ${cmd}"
 eval "${cmd}"
 if [ $? -ne 0 ]; then
   echo "${name}: command \"${cmd}\" failed, aborting ..."
-  rm -f ${TMPF}
+  rm -f ${TRCCMD_EVENTS}
   exit 6
 fi
 [ "${USE_MARKERS}" -eq 1 ] && sudo sh -c "echo END > ${TRCMNT}/trace_marker"
 
 ls "${TRC_FILE_BINARY}" >/dev/null || {
   echo "${name}: 'trace-cmd record' failed, no binary trace file, aborting ..."
-  rm -f ${TMPF}
+  rm -f ${TRCCMD_EVENTS}
   exit 7
 }
 sudo chown "${USER}":"${USER}" "${TRC_FILE_BINARY}"
@@ -228,7 +228,7 @@ echo "
 eval "${cmd}"
 if [ $? -ne 0 ]; then
     echo "${name}: command \"${cmd}\" failed, aborting ..."
-    rm -f ${TMPF}
+    rm -f ${TRCCMD_EVENTS}
     exit 6
 fi
 echo "[+] Done"  #, report: ${TRC_FILE}"
@@ -245,5 +245,5 @@ Details here:
 KernelShark: https://kernelshark.org/Documentation.html
 TraceCompass: using_tracecompass_gui_with_trccmd.txt
  (online: https://github.com/kaiwan/trccmd/blob/main/using_tracecompass_gui_with_trccmd.txt)"
-rm -f ${TMPF}
+rm -f ${TRCCMD_EVENTS}
 exit 0
