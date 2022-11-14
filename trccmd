@@ -33,6 +33,7 @@ if [ ! -f ${CONFIG} ] ; then
      echo "${name}: pl ensure that the first run is from within the trccmd GitHub repo directory only..."
 	 exit 1
    fi
+   mkdir -p ~/.local
    cp ./trccmd.config ~/.local/
 fi
 source ${CONFIG} || {
