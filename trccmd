@@ -177,7 +177,7 @@ echo "[+] Recording now ...(binary ftrace file is ${TRC_FILE_BINARY}
 
 << This can take a while, be patient ...
  (Pl at least wait for a message onscreen before doing anything)
-Also, if you must abort, hit Ctrl^C just once >>
+ Also, if you must abort, hit Ctrl^C just once (again, be patient, it can take time before a response) >>
 "
 
 OPTS_RECORD="${OPTS_RECORD} ${EVENTS}"
