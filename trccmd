@@ -81,7 +81,10 @@ $(sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n'
  (check it out, useful stuff within). You will, however, lose the function graph indentation
  when parameters are enabled.
 
- f) pass only '-h' to ${name} to see this Help screen."
+ f) pass only '-h' to ${name} to see this Help screen.
+
+ TIP:
+ See (and try!) the sample_usage script."
 }
 
 show_config()
