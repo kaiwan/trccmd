@@ -30,7 +30,7 @@ if [ ! -f ${CONFIG} ] ; then
    echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
 (to ${CONFIG})"
    if [ ! -f ./trccmd.config ] ; then
-     echo "${name}: pl ensure that the first run is from within the trccmd GitHub repo directory only..."
+     echo "${name}: ensure that it's first run from within the trccmd GitHub repo directory only..."
 	 exit 1
    fi
    mkdir -p ~/.local
@@ -41,11 +41,15 @@ source ${CONFIG} || {
 (Please ensure you 'git clone' the full repo to get the config file as well!)"
  exit 1
 }
-echo "config parsed from: ${CONFIG}"
+echo "${name}: config parsed from: ${CONFIG}"
 
 usage()
 {
-   echo "Usage: ${name} [-e 'subsystem1 subsystem2 ...'] [-F 'program-to-trace [arg1] [arg2] ...']
+   echo "
+======= trccmd Help screen =======
+
+Usage:
+${name} [-h] [-e 'subsystem1 subsystem2 ...'] [-F 'program-to-trace [arg1] [arg2] ...']
 
  Eg. ./${name} -e 'syscalls kmem' -F 'ps -LA'
 
@@ -60,19 +64,23 @@ $(sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n'
     Not using the -e option has trccmd attempt to trace _all_ events
 
  c) ensure you surround the -e and/or -F arguments with single quotes '...'
- d) If no program is provided as an argument, we shall trace-cmd(1) whatever's running.
+ d) If no program is provided as an argument, we shall trace-cmd(1) whatever's running on the system
+ e) pass only '-h' to ${name} to see this Help screen.
 
 Additionally, if you want to *see all function parameters and their runtime values*
 (useful!), ensure the variable SHOW_PARAMETERS is set to 1 in the config file
-${CONFIG} (check it out, useful stuff). You will, however, lose the function graph
+${CONFIG} (check it out, useful stuff). You will, however, lose the function graph indentation
 when parameters are enabled."
 }
 
 
 ## "main" here
 
-
 TRCCMD_EVENTS=/tmp/trccmd.evs.$$
+if [[ $# -eq 1 && "$1" = "-h" ]] ; then
+	usage
+	exit 0
+fi
 sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TRCCMD_EVENTS}
 
 while getopts ":he:F:" arg; do
@@ -91,7 +99,6 @@ while getopts ":he:F:" arg; do
 		EVENTS="${EVENTS} -e ${ev}"
 	  done
       #echo "ev = ${EVENTS}"
-
       ;;
     h | *) # Display help.
       usage
