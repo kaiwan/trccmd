@@ -1,2 +1,3 @@
 #!/bin/bash
+echo "./trccmd -F 'ping -c1 yahoo.com' -e 'net sock skb tcp udp'"
 ./trccmd -F 'ping -c1 yahoo.com' -e 'net sock skb tcp udp'
