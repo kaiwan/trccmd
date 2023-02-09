@@ -13,8 +13,12 @@
 #
 # (c) Kaiwan N Billimoria, kaiwanTECH
 # License: MIT
-name=$(basename "$0")
 
+# Turn on Bash 'strict mode'!
+# ref: http://redsymbol.net/articles/unofficial-bash-strict-mode/ 
+set -euo pipefail
+
+name=$(basename "$0")
 hash trace-cmd >/dev/null 2>&1 || {
    echo "${name}: trace-cmd not installed (or not in PATH)?
 First install the trace-cmd package and retry..."
@@ -25,6 +29,10 @@ First install the trace-cmd package and retry..."
  echo "${name}: Please don't run as root."
  exit 1
 }
+
+# Check for the config file
+# If it isn't present, this is likely the first run; install it
+# If present, source it in!
 CONFIG=~/.local/trccmd.config
 if [ ! -f ${CONFIG} ] ; then
    echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
@@ -37,11 +45,11 @@ if [ ! -f ${CONFIG} ] ; then
    cp ./trccmd.config ~/.local/
 fi
 source ${CONFIG} || {
- echo "${name}: fatal: could not source file '${CONFIG}', aborting...
+	echo "${name}: fatal: could not source file '${CONFIG}', aborting...
 (Please ensure you 'git clone' the full repo to get the config file as well!)"
- exit 1
+	exit 1
 }
-echo "${name}: config parsed from: ${CONFIG}"
+echo "${name}: config parsed from ${CONFIG}"
 
 usage()
 {
@@ -65,12 +73,24 @@ $(sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n'
 
  c) ensure you surround the -e and/or -F arguments with single quotes '...'
  d) If no program is provided as an argument, we shall trace-cmd(1) whatever's running on the system
- e) pass only '-h' to ${name} to see this Help screen.
+ e) The config file's here:
+     ${CONFIG}
 
-Additionally, if you want to *see all function parameters and their runtime values*
-(useful!), ensure the variable SHOW_PARAMETERS is set to 1 in the config file
-${CONFIG} (check it out, useful stuff). You will, however, lose the function graph indentation
-when parameters are enabled."
+ If you want to *see all function parameters and their runtime values*
+ (useful!), ensure the variable SHOW_PARAMETERS is set to 1 in the config file
+ (check it out, useful stuff within). You will, however, lose the function graph indentation
+ when parameters are enabled.
+
+ f) pass only '-h' to ${name} to see this Help screen."
+}
+
+show_config()
+{
+echo "QUIET_MODE         = ${QUIET_MODE}"
+echo "DONT_REPORT_IRQCTX = ${DONT_REPORT_IRQCTX}"
+echo "SHOW_PARAMETERS    = ${SHOW_PARAMETERS}"
+echo "SKIP_FTRACE_CHECK  = ${SKIP_FTRACE_CHECK}"
+echo "USE_MARKERS        = ${USE_MARKERS}"
 }
 
 
@@ -83,6 +103,7 @@ if [[ $# -eq 1 && "$1" = "-h" ]] ; then
 fi
 sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TRCCMD_EVENTS}
 
+EVENTS=""
 while getopts ":he:F:" arg; do
   case $arg in
     F) # Specify prg to run
@@ -107,7 +128,7 @@ while getopts ":he:F:" arg; do
       ;;
   esac
 done
-[ -z "${EVENTS}" ] && EVENTS="-e all"
+[[ -z "${EVENTS}" ]] && EVENTS="-e all"
 
 echo "[+] Checking for ftrace support ..."
 # tracefs from 4.1
@@ -127,6 +148,8 @@ if [ "${NF}" -le 0 ] ; then
  exit 3
 fi
 echo " [OK] (ftrace loc: ${TRCMNT})"
+
+#show_config
 
 #-------------- test for the 'function_graph' plugin support
 if [ "${SKIP_FTRACE_CHECK}" -eq 0 ]; then
@@ -179,7 +202,7 @@ else
   OPTS_RECORD="${OPTS_RECORD} -p function_graph"
 fi
 
-echo "[+] Recording now ...(binary ftrace file is ${TRC_FILE_BINARY}
+echo "[+] Recording now ...(binary ftrace file is ${TRC_FILE_BINARY})
 [rec options: \"${OPTS_RECORD}\"]
 
 << This can take a while, be patient ...
@@ -218,6 +241,7 @@ ls "${TRC_FILE_BINARY}" >/dev/null || {
 sudo chown "${USER}":"${USER}" "${TRC_FILE_BINARY}"
 
 #------------------ REPORT
+echo
 echo "[+] Generating the trace-cmd report now ..."
 echo -n "    Note: report done in latency format"
 OPTS_REPORT="-l -i ${TRC_FILE_BINARY}"
