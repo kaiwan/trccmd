@@ -115,7 +115,8 @@ while getopts ":he:F:" arg; do
     e) # Specify event subsystems (or globs)
 	  for ev in ${OPTARG}
 	  do
-	    grep -q "${ev}" ${TRCCMD_EVENTS} || {
+		# don't use grep -q ! it can work unexpectedly with the 'if' as ret values aren't what's expected..
+		grep "${ev}" ${TRCCMD_EVENTS} >/dev/null || {
 		   echo "${name}: fatal: event \"${ev}\" unavailable"
 		   rm -f ${TRCCMD_EVENTS}
 		   exit 1
@@ -135,7 +136,7 @@ done
 
 echo "[+] Checking for ftrace support ..."
 # tracefs from 4.1
-sudo mount |grep -q -w tracefs || {
+sudo mount |grep -w tracefs >/dev/null || {
   echo "${name}: tracefs filesystem not mounted? Aborting..."
   rm -f ${TRCCMD_EVENTS}
   exit 2
@@ -143,7 +144,7 @@ sudo mount |grep -q -w tracefs || {
 TRCMNT=$(sudo mount |grep -w tracefs |head -n1|awk '{print $3}')
 export TRCMNT
 # if /sys/kernel/debug then append 'tracing' else don't (for /sys/kernel/tracing)
-echo "${TRCMNT}" |grep -q debug && TRCMNT=${TRCMNT}/tracing
+echo "${TRCMNT}" |grep debug >/dev/null && TRCMNT=${TRCMNT}/tracing
 NF=$(sudo ls "${TRCMNT}" 2>/dev/null |wc -w)
 if [ "${NF}" -le 0 ] ; then
  echo "${name}: ${TRCMNT} no pseudo-files available? Aborting..."
@@ -165,7 +166,7 @@ if [ "${SKIP_FTRACE_CHECK}" -eq 0 ]; then
 
  mv trace.dat trace.dat.bkp 2>/dev/null
  TESTFUNC=__do_sys_getpid
- if ! sudo grep -q -w ${TESTFUNC} "${TRCMNT}"/available_filter_functions ; then
+ if ! sudo grep -w ${TESTFUNC} "${TRCMNT}"/available_filter_functions >/dev/null ; then
    echo "${name}: test func ${TESTFUNC} not available, aborting test..."
    rm -f ${TRCCMD_EVENTS}
    exit 4
