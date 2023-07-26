@@ -107,6 +107,7 @@ fi
 sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TRCCMD_EVENTS}
 
 EVENTS=""
+PRG=""
 while getopts ":he:F:" arg; do
   case $arg in
     F) # Specify prg to run
