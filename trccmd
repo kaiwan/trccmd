@@ -94,6 +94,7 @@ echo "DONT_REPORT_IRQCTX = ${DONT_REPORT_IRQCTX}"
 echo "SHOW_PARAMETERS    = ${SHOW_PARAMETERS}"
 echo "SKIP_FTRACE_CHECK  = ${SKIP_FTRACE_CHECK}"
 echo "USE_MARKERS        = ${USE_MARKERS}"
+echo "SKIP_LENGTHY_FTRACE_CHECK  = ${SKIP_LENGTHY_FTRACE_CHECK}"
 }
 
 
@@ -157,7 +158,7 @@ echo " [OK] (ftrace loc: ${TRCMNT})"
 #show_config
 
 #-------------- test for the 'function_graph' plugin support
-if [ "${SKIP_FTRACE_CHECK}" -eq 0 ]; then
+if [ "${SKIP_LENGTHY_FTRACE_CHECK}" -eq 0 ]; then
  echo -n "[+] Checking for trace-cmd with function_graph plugin support, pl wait ..."
  hash trace-cmd >/dev/null 2>&1 || {
    echo "${name}: trace-cmd not installed (or not in PATH)?"
