@@ -96,10 +96,11 @@ if [ ! -f ${CONFIG} ] ; then
    echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
 (to ${CONFIG})"
    if [ ! -f ./trccmd.config ] ; then
-     die "${name}: ensure that it's first run from within the trccmd GitHub repo directory only..."
+     LOCDIR=$(dirname $(which trccmd))
+     [[ -z "${LOCDIR}" || ! -d "${LOCDIR}" ]] && die "Couldn't locate the trccmd directory"
    fi
    mkdir -p ~/.local
-   cp ./trccmd.config ~/.local/
+   cp ${LOCDIR}/trccmd.config ~/.local/
 fi
 source ${CONFIG} || die "${name}: fatal: could not source file '${CONFIG}', aborting...
 (Please ensure you 'git clone' the full repo to get the config file as well!)"
