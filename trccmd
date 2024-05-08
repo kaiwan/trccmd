@@ -26,7 +26,10 @@ exit 1
 
 
 name=$(basename "$0")
-hash trace-cmd >/dev/null 2>&1 || die "${name}: trace-cmd not installed (or not in PATH)?
+TRACE_CMD=trace-cmd  # default: locate trace-cmd via PATH
+#TRACE_CMD=<...>/trace-cmd  # you're free to change it to a later ver or whatever...
+
+hash ${TRACE_CMD} >/dev/null 2>&1 || die "${name}: trace-cmd not installed (or not in PATH)?
 First install the trace-cmd package and retry..."
 [ "$(id -u)" -eq 0 ] && die "${name}: Please don't run as root."
 
@@ -67,12 +70,12 @@ ${name} [-h] [-e 'subsystem1 subsystem2 ...'] [-F 'program-to-trace [arg1] [arg2
     from among the ones shown below; you can specify as many as you like, just separate them
 	with a space:
 
-$(sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ')
+$(sudo ${TRACE_CMD} list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ')
 
     Not using the -e option has trccmd attempt to trace _all_ events
 
  c) ensure you surround the -e and/or -F arguments with single quotes '...'
- d) If no program is provided as an argument, we shall trace-cmd(1) whatever's running on the system
+ d) If no program is provided as an argument, we shall ${TRACE_CMD}(1) whatever's running on the system
  e) Configs: the config file's here:
      ${CONFIG}
  
@@ -108,7 +111,7 @@ if [[ $# -eq 1 && "$1" = "-h" ]] ; then
 	usage
 	exit 0
 fi
-sudo trace-cmd list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TRCCMD_EVENTS}
+sudo ${TRACE_CMD} list |awk -F':' 'NF==2 {print $1}'|sort -t':' -k1 |uniq|tr '\n' ' ' > ${TRCCMD_EVENTS}
 
 EVENTS=""
 PRG=""
@@ -174,7 +177,8 @@ echo " [OK] (ftrace loc: ${TRCMNT})"
 #-------------- test for the 'function_graph' plugin support
 if [ "${SKIP_LENGTHY_FTRACE_CHECK}" -eq 0 ]; then
  echo -n "[+] Checking for trace-cmd with function_graph plugin support, pl wait ..."
- hash trace-cmd >/dev/null 2>&1 || {
+ hash ${TRACE_CMD} >/dev/null 2>&1 || {
+   echo "${name}: ${TRACE_CMD} not installed (or not in PATH)?"
    rm -f ${TRCCMD_EVENTS}
    die "${name}: trace-cmd not installed (or not in PATH)?"
  }
@@ -186,8 +190,8 @@ if [ "${SKIP_LENGTHY_FTRACE_CHECK}" -eq 0 ]; then
    rm -f ${TRCCMD_EVENTS}
    exit 4
  else
-  sudo trace-cmd record -p function_graph -l ${TESTFUNC} -F true >/dev/null 2>&1 || {
-    echo "${name}: trace-cmd didn't work with the function-graph plugin, aborting..."
+  sudo ${TRACE_CMD} record -p function_graph -l ${TESTFUNC} -F true >/dev/null 2>&1 || {
+    echo "${name}: ${TRACE_CMD} didn't work with the function-graph plugin, aborting..."
     rm -f ${TRCCMD_EVENTS}
     exit 5
   }
@@ -200,7 +204,7 @@ else
 fi
 
 echo "[+] Reset..."
-sudo trace-cmd reset
+sudo ${TRACE_CMD} reset
 
 #------------------ RECORD
 TRC_FILE_BINARY=trc_all.dat
@@ -235,11 +239,11 @@ echo "[+] Recording now ...(binary ftrace file is ${TRC_FILE_BINARY})
 OPTS_RECORD="${OPTS_RECORD} ${EVENTS}"
 
 if [ $# -ge 1 ] ; then
-  cmd="sudo trace-cmd record ${OPTS_RECORD} -c -F ${PRG}"  #"$@""
+  cmd="sudo ${TRACE_CMD} record ${OPTS_RECORD} -c -F ${PRG}"  #"$@""
    # -F: trace only this executable
    # -c: ...along with it's children, if any
 else
-  cmd="sudo trace-cmd record ${OPTS_RECORD}"
+  cmd="sudo ${TRACE_CMD} record ${OPTS_RECORD}"
 fi
 
 echo "> ${cmd}"
@@ -256,7 +260,7 @@ fi
 [ "${USE_MARKERS}" -eq 1 ] && sudo sh -c "echo END > ${TRCMNT}/trace_marker"
 
 ls "${TRC_FILE_BINARY}" >/dev/null || {
-  echo "${name}: 'trace-cmd record' failed, no binary trace file, aborting ..."
+  echo "${name}: '${TRACE_CMD} record' failed, no binary trace file, aborting ..."
   rm -f ${TRCCMD_EVENTS}
   exit 7
 }
@@ -275,7 +279,7 @@ OPTS_REPORT="-l -i ${TRC_FILE_BINARY}"
   OPTS_REPORT="${OPTS_REPORT} -I -S"
 }
 
-cmd="sudo trace-cmd report ${OPTS_REPORT} > ${TRC_FILE}"
+cmd="sudo ${TRACE_CMD} report ${OPTS_REPORT} > ${TRC_FILE}"
 echo "
 > ${cmd}"
 eval "${cmd}"
