@@ -18,17 +18,17 @@
 # ref: http://redsymbol.net/articles/unofficial-bash-strict-mode/ 
 set -euo pipefail
 
-name=$(basename "$0")
-hash trace-cmd >/dev/null 2>&1 || {
-   echo "${name}: trace-cmd not installed (or not in PATH)?
-First install the trace-cmd package and retry..."
-   exit 1
+die()
+{
+echo >&2 "FATAL: $*"
+exit 1
 }
 
-[ "$(id -u)" -eq 0 ] && {
- echo "${name}: Please don't run as root."
- exit 1
-}
+
+name=$(basename "$0")
+hash trace-cmd >/dev/null 2>&1 || die "${name}: trace-cmd not installed (or not in PATH)?
+First install the trace-cmd package and retry..."
+[ "$(id -u)" -eq 0 ] && die "${name}: Please don't run as root."
 
 # Check for the config file
 # If it isn't present, this is likely the first run; install it
@@ -38,17 +38,13 @@ if [ ! -f ${CONFIG} ] ; then
    echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
 (to ${CONFIG})"
    if [ ! -f ./trccmd.config ] ; then
-     echo "${name}: ensure that it's first run from within the trccmd GitHub repo directory only..."
-	 exit 1
+     die "${name}: ensure that it's first run from within the trccmd GitHub repo directory only..."
    fi
    mkdir -p ~/.local
    cp ./trccmd.config ~/.local/
 fi
-source ${CONFIG} || {
-	echo "${name}: fatal: could not source file '${CONFIG}', aborting...
+source ${CONFIG} || die "${name}: fatal: could not source file '${CONFIG}', aborting...
 (Please ensure you 'git clone' the full repo to get the config file as well!)"
-	exit 1
-}
 echo "${name}: config parsed from ${CONFIG}"
 
 whats_show_params() {
@@ -127,9 +123,8 @@ while getopts ":he:F:" arg; do
 	  do
 		# don't use grep -q ! it can work unexpectedly with the 'if' as ret values aren't what's expected..
 		grep "${ev}" ${TRCCMD_EVENTS} >/dev/null || {
-		   echo "${name}: fatal: event \"${ev}\" unavailable"
 		   rm -f ${TRCCMD_EVENTS}
-		   exit 1
+		   die "${name}: fatal: event \"${ev}\" unavailable"
 		}
 		EVENTS="${EVENTS} -e ${ev}"
 	  done
@@ -180,9 +175,8 @@ echo " [OK] (ftrace loc: ${TRCMNT})"
 if [ "${SKIP_LENGTHY_FTRACE_CHECK}" -eq 0 ]; then
  echo -n "[+] Checking for trace-cmd with function_graph plugin support, pl wait ..."
  hash trace-cmd >/dev/null 2>&1 || {
-   echo "${name}: trace-cmd not installed (or not in PATH)?"
    rm -f ${TRCCMD_EVENTS}
-   exit 1
+   die "${name}: trace-cmd not installed (or not in PATH)?"
  }
 
  mv trace.dat trace.dat.bkp 2>/dev/null
