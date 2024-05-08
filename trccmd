@@ -14,6 +14,7 @@
 # (c) Kaiwan N Billimoria, kaiwanTECH
 # License: MIT
 
+name=$(basename "$0")
 # Turn on Bash 'strict mode'!
 # ref: http://redsymbol.net/articles/unofficial-bash-strict-mode/ 
 set -euo pipefail
@@ -23,32 +24,6 @@ die()
 echo >&2 "FATAL: $*"
 exit 1
 }
-
-
-name=$(basename "$0")
-TRACE_CMD=trace-cmd  # default: locate trace-cmd via PATH
-#TRACE_CMD=<...>/trace-cmd  # you're free to change it to a later ver or whatever...
-
-hash ${TRACE_CMD} >/dev/null 2>&1 || die "${name}: trace-cmd not installed (or not in PATH)?
-First install the trace-cmd package and retry..."
-[ "$(id -u)" -eq 0 ] && die "${name}: Please don't run as root."
-
-# Check for the config file
-# If it isn't present, this is likely the first run; install it
-# If present, source it in!
-CONFIG=~/.local/trccmd.config
-if [ ! -f ${CONFIG} ] ; then
-   echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
-(to ${CONFIG})"
-   if [ ! -f ./trccmd.config ] ; then
-     die "${name}: ensure that it's first run from within the trccmd GitHub repo directory only..."
-   fi
-   mkdir -p ~/.local
-   cp ./trccmd.config ~/.local/
-fi
-source ${CONFIG} || die "${name}: fatal: could not source file '${CONFIG}', aborting...
-(Please ensure you 'git clone' the full repo to get the config file as well!)"
-echo "${name}: config parsed from ${CONFIG}"
 
 whats_show_params() {
 [[ ${SHOW_PARAMETERS} -eq 0 ]]  && echo -n "isn't" || echo -n "is"
@@ -105,6 +80,30 @@ echo "USE_MARKERS                = ${USE_MARKERS}"
 
 
 ## "main" here
+
+TRACE_CMD=trace-cmd  # default: locate trace-cmd via PATH
+#TRACE_CMD=<...>/trace-cmd  # you're free to change it to a later ver or whatever...
+
+hash ${TRACE_CMD} >/dev/null 2>&1 || die "${name}: trace-cmd not installed (or not in PATH)?
+First install the trace-cmd package and retry..."
+[ "$(id -u)" -eq 0 ] && die "${name}: Please don't run as root."
+
+# Check for the config file
+# If it isn't present, this is likely the first run; install it
+# If present, source it in!
+CONFIG=~/.local/trccmd.config
+if [ ! -f ${CONFIG} ] ; then
+   echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
+(to ${CONFIG})"
+   if [ ! -f ./trccmd.config ] ; then
+     die "${name}: ensure that it's first run from within the trccmd GitHub repo directory only..."
+   fi
+   mkdir -p ~/.local
+   cp ./trccmd.config ~/.local/
+fi
+source ${CONFIG} || die "${name}: fatal: could not source file '${CONFIG}', aborting...
+(Please ensure you 'git clone' the full repo to get the config file as well!)"
+echo "${name}: config parsed from ${CONFIG}"
 
 TRCCMD_EVENTS=/tmp/trccmd.evs.$$
 if [[ $# -eq 1 && "$1" = "-h" ]] ; then
