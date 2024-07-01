@@ -37,7 +37,7 @@ usage()
 Usage:
 ${name} [-h] [-e 'subsystem1 subsystem2 ...'] [-F 'program-to-trace [arg1] [arg2] ...']
 
- Eg. ./${name} -e 'syscalls kmem' -F 'ps -LA'
+ Eg. ${name} -e 'syscalls kmem' -F 'ps -LA'
 
  NOTE:
  a) -F: this will perform an _exclusive_ ftrace of the provided app ('ps -LA' in the above eg).
@@ -88,6 +88,11 @@ hash ${TRACE_CMD} >/dev/null 2>&1 || die "${name}: trace-cmd not installed (or n
 First install the trace-cmd package and retry..."
 [ "$(id -u)" -eq 0 ] && die "${name}: Please don't run as root."
 
+PDIR=$(which $0)
+[ -z "${PDIR}" ] && PDIR=$(dirname $0)  # true if trccmd isn't in the PATH
+export LOCDIR=$(dirname ${PDIR})    # dir in which this script and tools reside
+[[ -z "${LOCDIR}" || ! -d "${LOCDIR}" ]] && die "Couldn't locate the trccmd directory"
+
 # Check for the config file
 # If it isn't present, this is likely the first run; install it
 # If present, source it in!
@@ -95,10 +100,6 @@ CONFIG=~/.local/trccmd.config
 if [ ! -f ${CONFIG} ] ; then
    echo "${name}: as this is (likely) your very first run, we're installing the trccmd config file ...
 (to ${CONFIG})"
-   if [ ! -f ./trccmd.config ] ; then
-     LOCDIR=$(dirname $(which trccmd))
-     [[ -z "${LOCDIR}" || ! -d "${LOCDIR}" ]] && die "Couldn't locate the trccmd directory"
-   fi
    mkdir -p ~/.local
    cp ${LOCDIR}/trccmd.config ~/.local/
 fi
