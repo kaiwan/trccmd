@@ -1,6 +1,13 @@
 # trccmd
 A trace-cmd frontend
 
+**Prereqs**
+- Requires root (sudo) access
+- The `trace-cmd(1)` utility needs to be installed (as `trccmd` is a wrapper over it):
+	- `sudo apt install trace-cmd`     # on Debian/Ubuntu
+ 	- `sudo dnf install trace-cmd`     # Fedora
+  	- `sudo zypper install trace-cmd`  # openSUSE
+
 **======= trccmd Help screen =======**
 
 Usage:
